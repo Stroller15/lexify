@@ -1,25 +1,53 @@
-import axios from 'axios';
+import dotenv from 'dotenv';
+import { Groq } from 'groq-sdk';
+import Bottleneck from 'bottleneck';
 
-const getCorrectedText = async (text, mode) => {
+dotenv.config();
+
+let groq;
+
+console.log("API Key:", process.env.GROQ_API_KEY);
+
+try {
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error("The GROQ_API_KEY environment variable is missing or empty");
+  }
+
+  groq = new Groq({
+    apiKey: process.env.GROQ_API_KEY,
+  });
+} catch (error) {
+  console.error("Error initializing Groq client:", error.message);
+}
+
+// Initialize Bottleneck for rate limiting
+const limiter = new Bottleneck({
+  minTime: 1000,  // 1 second between each request (adjust according to your rate limits)
+  maxConcurrent: 1 // Ensure only one request is made at a time
+});
+
+const getCorrectedText = limiter.wrap(async (text, mode) => {
+  if (!groq) {
+    throw new Error("Groq client is not initialized. Please check your API key.");
+  }
+
   const prompt = `Correct the following sentence to be grammatically accurate and maintain the original tone: "${text}". Adjust to a ${mode} tone.`;
 
   try {
-    const response = await axios.post('https://api.openai.com/v1/completions', {
-      model: 'gpt-4o-mini',
-      prompt: prompt,
+    const completion = await groq.chat.completions.create({
+      messages: [
+        { role: 'system', content: prompt }
+      ],
+      model: 'mixtral-8x7b-32768',
       max_tokens: 100,
       temperature: 0.7
-    }, {
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
-      }
     });
 
-    return response.data.choices[0].text.trim();
+    return completion.choices[0].message.content.trim();
   } catch (error) {
-    console.error('Error details:', error.response?.data || error.message);
-    throw new Error(`Error interacting with OpenAI API: ${error.message}`);
+    console.error('Error details:', error);
+    throw new Error(`Error interacting with Groq API: ${error.message}`);
   }
-};
+});
 
 export { getCorrectedText };
