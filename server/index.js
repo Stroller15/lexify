@@ -10,11 +10,7 @@ const app = express();
 app.use(bodyParser.json());
 app.use('/api', grammarRoutes);
 
-app.get('/ping', (req, res) => {
-    res.json({
-        message: 'pong'
-    })
-})
+
 
 // Error handling middleware
 app.use(errorHandler);
