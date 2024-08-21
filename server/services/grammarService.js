@@ -6,7 +6,7 @@ dotenv.config();
 
 let groq;
 
-console.log("API Key:", process.env.GROQ_API_KEY);
+
 
 try {
   if (!process.env.GROQ_API_KEY) {
@@ -26,12 +26,12 @@ const limiter = new Bottleneck({
   maxConcurrent: 1 // Ensure only one request is made at a time
 });
 
-const getCorrectedText = limiter.wrap(async (text, mode) => {
+const getCorrectedText = limiter.wrap(async (text) => {
   if (!groq) {
     throw new Error("Groq client is not initialized. Please check your API key.");
   }
 
-  const prompt = `Correct the following sentence to be grammatically accurate and maintain the original tone: "${text}". Adjust to a ${mode} tone.`;
+  const prompt = `Correct the following sentence to be grammatically accurate and maintain the original tone: "${text}".`;
 
   try {
     const completion = await groq.chat.completions.create({
