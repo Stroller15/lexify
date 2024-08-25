@@ -1,44 +1,45 @@
-console.log("Popup script loaded - version 5");
+console.log("Popup script loaded - version 6");
 
 document.getElementById('correctButton').addEventListener('click', async () => {
     console.log("Button clicked");
     try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-        if (!tab.url.startsWith("chrome://") && !tab.url.startsWith("edge://")) {
-            // Inject content script
-            await chrome.scripting.executeScript({
-                target: { tabId: tab.id },
-                files: ['content.js']
-            });
-            console.log("Content script injection attempted");
-
-            // Wait for content script to load
-            await new Promise((resolve) => {
-                const checkLoaded = () => {
-                    chrome.tabs.sendMessage(tab.id, {action: 'ping'}, response => {
-                        if (chrome.runtime.lastError) {
-                            console.log("Ping failed, retrying...");
-                            setTimeout(checkLoaded, 100);  // Retry after 100ms
-                        } else {
-                            console.log("Ping successful", response);
-                            resolve();
-                        }
-                    });
-                };
-                checkLoaded();
-            });
-
-            console.log("Content script confirmed loaded");
-
-            // Now send the actual message
-            console.log("Sending correctText message");
-            const response = await chrome.tabs.sendMessage(tab.id, { action: 'correctText' });
-            console.log('Message sent successfully, response:', response);
-        } else {
-            console.log("Cannot inject scripts into this type of page");
-        }
+        // First, try to ping the content script
+        chrome.tabs.sendMessage(tab.id, { action: 'ping' }, function(response) {
+            if (chrome.runtime.lastError) {
+                // Content script is not ready, inject it
+                console.log("Content script not ready, injecting it now");
+                chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    files: ['content.js']
+                }, () => {
+                    if (chrome.runtime.lastError) {
+                        console.error('Failed to inject content script:', chrome.runtime.lastError.message);
+                    } else {
+                        console.log("Content script injected, sending correctText message");
+                        // Wait a bit for the script to initialize
+                        setTimeout(() => {
+                            sendCorrectTextMessage(tab.id);
+                        }, 100);
+                    }
+                });
+            } else {
+                console.log("Content script is ready, sending correctText message");
+                sendCorrectTextMessage(tab.id);
+            }
+        });
     } catch (error) {
         console.error('Error in popup script:', error);
     }
 });
+
+function sendCorrectTextMessage(tabId) {
+    chrome.tabs.sendMessage(tabId, { action: 'correctText' }, function(response) {
+        if (chrome.runtime.lastError) {
+            console.error('Error sending correctText message:', chrome.runtime.lastError.message);
+        } else {
+            console.log('correctText message sent successfully, response:', response);
+        }
+    });
+}
