@@ -31,7 +31,8 @@ const getCorrectedText = limiter.wrap(async (text) => {
     throw new Error("Groq client is not initialized. Please check your API key.");
   }
 
-  const prompt = `Correct the following sentence to be grammatically accurate and maintain the original tone: "${text}".`;
+  const prompt = `Provide only the grammatically corrected version of the following text: "${text}". Do not include any explanations.`;
+
 
   try {
     const completion = await groq.chat.completions.create({
