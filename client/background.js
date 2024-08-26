@@ -1,4 +1,4 @@
-console.log('Background script loaded - version 4');
+console.log('Background script loaded - version 5');
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'correctText') {
@@ -11,10 +11,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     })
     .then(response => response.json())
     .then(data => {
-      // Remove any surrounding quotes and extra text from the correctedText
       let correctedText = data.correctedText;
-      correctedText = correctedText.replace(/^["']|["']$/g, ''); // Remove starting and ending quotes
-      correctedText = correctedText.split('"').pop().split('"')[0]; // Extract text between last set of quotes if present
+      
+
+      const match = correctedText.match(/^([^"(]+)/);
+      if (match) {
+        correctedText = match[1].trim();
+      }
+      
+
+      correctedText = correctedText.replace(/^["'\(\)]+|["'\(\)]+$/g, '').trim();
+      
       console.log('Processed corrected text:', correctedText);
       sendResponse({ correctedText: correctedText });
     })
@@ -22,6 +29,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       console.error('Error during fetch:', error);
       sendResponse({ error: 'API error' });
     });
-    return true; // Indicates that the response is sent asynchronously
+    return true; 
   }
 });
